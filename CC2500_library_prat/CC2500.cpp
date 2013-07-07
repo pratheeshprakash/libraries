@@ -15,20 +15,53 @@
 */
 unsigned char val[48]=
 	{
-	0x06,0x01,0x06,0x0D,
-	0xD3,0x91,0xFF,0x04,
-	0x45, 
-	0x00,					 	//address
-	0x00,0x09,
-	0x00,0x5D,0x93,0xB1,
-	0x2D,0x3B,0x73,0x22,
-	0xF8,0x00,0x07,0x30,
-	0x18,0x1D,0x1C,0xC7,
-	0x00,0xB2,0x87,0x6B,
-	0xF8,0xB6,0x10,0xEA,
-	0x0A,0x00,0x11,0x41,
-	0x00,0x59,0x7F,0x3F,
-	0x88,0x31,0x0B
+	0x06,	//IOCFG2 
+	0x01,	//IOCFG1 
+	0x06,	//IOCFG0 
+	0x0D,	//FIFOTHR
+	0xD3,	//SYNC1  
+	0x91,	//SYNC0  
+	0xFF,	//PKTLEN 
+	0x04,	//PKTCTRL
+	0x45,	//PKTCTRL 
+	0x00,	//ADDR   					 	
+	0x00,	//CHANNR 
+	0x09,	//FSCTRL1
+	0x00,	//FSCTRL0
+	0x5D,	//FREQ2  
+	0x93,	//FREQ1  
+	0xB1,	//FREQ0  
+	0x2D,	//MDMCFG4
+	0x3B,	//MDMCFG3
+	0x73,	//MDMCFG2
+	0x22,	//MDMCFG1
+	0xF8,	//MDMCFG0
+	0x00,	//DEVIATN
+	0x07,	//MCSM2  
+	0x30,	//MCSM1  
+	0x18,	//MCSM0  
+	0x1D,	//FOCCFG 
+	0x1C,	//BSCFG  
+	0xC7,	//AGCCTRL
+	0x00,	//AGCCTRL
+	0xB2,	//AGCCTRL
+	0x87,	//WOREVT1
+	0x6B,	//WOREVT0
+	0xF8,	//WORCTRL
+	0xB6,	//FREND1 
+	0x10,	//FREND0 
+	0xEA,	//FSCAL3 
+	0x0A,	//FSCAL2 
+	0x00,	//FSCAL1 
+	0x11,	//FSCAL0 
+	0x41,	//RCCTRL1
+	0x00,	//RCCTRL0
+	0x59,	//FSTEST 
+	0x7F,	//PTEST  
+	0x3F,	//AGCTEST
+	0x88,	//TEST2  
+	0x31,	//TEST1  
+	0x0B 	//TEST0  
 	};		
 					
 CC2500::CC2500(void)
@@ -176,7 +209,7 @@ unsigned char CC2500::sendBurstCommand(unsigned char command, unsigned char* dat
 {
     // enable device
     digitalWrite(pinCS, LOW);
-
+	
     // wait for device
     while (digitalRead(pinMISO) == HIGH) {};
 
@@ -186,12 +219,10 @@ unsigned char CC2500::sendBurstCommand(unsigned char command, unsigned char* dat
     unsigned char result = 0;
 
     // send data bytes
-    for (int i=1; i<(length+1); ++i) 
+    for (int i=0; i<=(length+1); i++) 
 	{
-        result = spiTransfer(data[i]);
-        data[i] = result;
-        //if(i==(length+1))
-        //data[i] = '\0';
+		result = spiTransfer(data[i]);
+        if(i<length)data[i] = result;  //write only till 1 less than length
     }
 
     // disable device
@@ -201,9 +232,9 @@ unsigned char CC2500::sendBurstCommand(unsigned char command, unsigned char* dat
     return result;
 }
 
-unsigned char CC2500::recCommand(unsigned char command)
+unsigned char CC2500::recCommand(unsigned char command) //command for getting register values
 {
-    command = command + 128;
+    command = command + 0x80;
     digitalWrite(pinCS, LOW);
     while (digitalRead(pinMISO) == HIGH) {};
     spiTransfer(command);
@@ -234,13 +265,11 @@ unsigned char CC2500::receiveData(unsigned char *data, unsigned char length)
 	{
 		// single access RX FIFO to get number of bytes to read, should be 0x3C
 		result = sendCommand(0xBF, 0x00);
-
 		if (result == length) 
 			{
-
-            // read RX FIFO
-            sendBurstCommand(0xFF, data, result);                	
-            ret=1;// return 1 if data received
+			// read RX FIFO
+            sendBurstCommand(0xFF, data, result); 
+			ret=1;// return 1 if data received
             // read 2 remaining bytes
             sendCommand(0xBF, 0x00);
             sendCommand(0xBF, 0x00);
@@ -263,28 +292,26 @@ unsigned char CC2500::receiveData(unsigned char *data, unsigned char length)
 
 void CC2500::sendData(unsigned char *data, unsigned char length)
 {
-   
-    // wait for previous packet to be completely sent
-    while ((sendByte(0xF5) & 0x1F) > 1) {};
+    while (sendByte(0xF5) & 0x1F > 1) { };
 
-    // prepare burst Packet
-    unsigned char packet[length];
+	// prepare burst Packet
+	unsigned char dp[length+1];
+	// First Byte = Length Of Packet = 60 = 0x3C
+	dp[0] = length;
 
-    // First Byte = Length Of Packet = 60 = 0x3C
-    packet[0] = length;
-
-	for(int i = 1; i < length; i++)
-	{	        	
-        packet[i] = data[i];
-	}
-
-
-   	// SIDLE: exit RX/TX
+	// SIDLE: exit RX/TX
     sendStrobeCommand(CC2500_CMD_SIDLE);
-
+    
     // fill TX FIFO
-    sendBurstCommand(0x7F, packet, length);
-
+    for(int i=1;i<=length;i++)
+    {
+      dp[i]=data[i-1];
+	  
+    }
+	
+	//send data in burst
+	sendBurstCommand(0x7F, dp, length);
+    
     // STX: enable TX
     sendStrobeCommand(CC2500_CMD_STX);
 }

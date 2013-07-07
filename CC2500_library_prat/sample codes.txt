@@ -1,0 +1,39 @@
+// Note: Please cut and paste each code into separate Arduino Sketches 
+// code which goes on the transmitter
+
+#include <CC2500.h>
+
+CC2500 RF;
+void setup()
+{
+ RF.initialise();
+}
+
+void loop()
+{
+  unsigned char dataTX[14]="Hello Wor";
+  RF.sendData(dataTX,10);
+  delay(100);
+}
+
+
+//code which goes on the receiver
+#include <CC2500.h>
+
+CC2500 RF;
+void setup()
+{
+  Serial.begin(9600);
+  RF.initialise();
+  Serial.println("Starting");
+}
+
+void loop()
+{
+  unsigned char dataRX[14];//keep the receiving array 1 bigger than length of data
+  if(RF.receiveData(dataRX,10))
+  {
+  Serial.write(dataRX,10);  
+  Serial.println();
+  }
+}
