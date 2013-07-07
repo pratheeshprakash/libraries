@@ -39,38 +39,75 @@
 class CC2500
 {
 public:
-	CC2500();
-	unsigned char spiTransfer(unsigned char data)
-	void initialise();
-	void reset();
-	void disp();
+    /*!
+    *  Constructor
+    */
+	CC2500(void);
+	
+	/*!
+    *  Transfer one byte of data through SPI, returns Status register of CC2500
+    */
+	unsigned char spiTransfer(unsigned char data);
+	
+	/*!
+    *  Initialise CC2500
+    */
+	void initialise(void);
+	
+	/*!
+    *  Reset CC2500
+    */
+	void reset(void);
+	
+	/*!
+    *  Display all registers from 0 - 47 in table format
+    */
+	void disp(void);
+	
+	/*!
+    *  Send one byte of data to CC2500
+    */
 	unsigned char sendByte(unsigned char data);
+	
+	/*!
+    *  Send Address and Data to CC2500
+    */
 	unsigned char sendCommand(unsigned char command, unsigned char data);
+	
+	/*!
+    *  Send only address for Strobe commands
+	*  Strobe commands: are preprogrammed commands stored at particular 
+	*  register addresses
+    */
 	unsigned char sendStrobeCommand(unsigned char command);
+	
+	/*!
+    *  Send burst command
+	*  Burst commands are used to reduce data size when reading 
+	*  consecutive registeres, so address for first one is only transmitted
+    */
 	unsigned char sendBurstCommand(unsigned char command, unsigned char* data,unsigned char length);
+	
+	/*!
+    *  Read regiter at particular address
+    */
 	unsigned char recCommand(unsigned char command);
+	
+	/*!
+    *  Receive data on Radio Freq.
+    */
 	unsigned char receiveData(unsigned char *data, unsigned char length);
+	
+	/*!
+    *  Send data on Radio Freq.
+    */
 	void sendData(unsigned char *data, unsigned char length);
 
 private:
-	unsigned char val[]{
-0x06,0x01,0x06,0x0D,
-0xD3,0x91,0xFF,0x04,
-0x45, 
-0x00,						//address
-0x00,0x09,
-0x00,0x5D,0x93,0xB1,
-0x2D,0x3B,0x73,0x22,
-0xF8,0x00,0x07,0x30,
-0x18,0x1D,0x1C,0xC7,
-0x00,0xB2,0x87,0x6B,
-0xF8,0xB6,0x10,0xEA,
-0x0A,0x00,0x11,0x41,
-0x00,0x59,0x7F,0x3F,
-0x88,0x31,0x0B
-};							// register values
+
+					
 
 };
-
+		
 
 #endif
